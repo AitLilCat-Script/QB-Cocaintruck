@@ -10,7 +10,7 @@ How to install
 1. Download the file
 2. extract the file in server/txdata/resource/[QB]/
 3. go to your server config.
-4. add command " Ensure QB-CT-main " or the files name you named it to! (recommended filename "QB-CT")
+4. add command " Ensure QB-Cocaintruck-main " or the files name you named it to! (recommended filename "QB-CT")
 5. start your server
 6. and enjoy!
 
