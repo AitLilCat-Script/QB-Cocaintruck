@@ -19,4 +19,4 @@ Location from npc Vector3 ( 264.19 -3244.43 5.79 )
 
 
 Preview
-https://www.youtube.com/watch?v=cdEz8kcTv-E
+https://www.youtube.com/watch?v=zKBoax286sw
