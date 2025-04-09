@@ -1,188 +1,106 @@
 local QBCore = exports['qb-core']:GetCoreObject()
 
-local isWorking = false
-local vehicle = nil
-local vehicleChoice = nil
-local ped = nil
-local cooldown = nil
-local spawnLocation = nil
-local destinationLocation = nil
-local vehBlip = nil
-local destinationBlip = nil
-local spawns = nil
-local spawnDriving = false
-local player = nil
-local isLoggedIn = false
-local startEntitySpawned = false
-local table = nil
-local laptop = nil
-local npc = nil
-local rank = nil
-local copVehicle = nil
-local cop = nil
-local goFindCar = nil
-local goFindParkedCar = nil
+-- Global variables (organized into tables)
+local playerData = {
+    isWorking = false,
+    player = nil,
+    isLoggedIn = false,
+    timeout = 0,
+    rank = nil,
+    npc = nil,
+    cop = nil,
+    copVehicle = nil,
+    vehicle = nil,
+    vehicleChoice = nil,
+    spawnLocation = nil,
+    destinationLocation = nil,
+    ped = nil,
+    spawns = nil,
+    spawnDriving = false
+}
 
-local timeout = 0
-local level = 1
-local tableModel = GetHashKey("prop_table_03b")
-local laptopModel = GetHashKey("prop_laptop_01a")
-local vehicleHash = GetHashKey("police4")
-local pedHash = GetHashKey("s_m_y_cop_01")
+local models = {
+    tableModel = GetHashKey("prop_table_03b"),
+    laptopModel = GetHashKey("prop_laptop_01a"),
+    vehicleHash = GetHashKey("police4"),
+    pedHash = GetHashKey("s_m_y_cop_01")
+}
 
+local npcCoords = vector3(0, 0, 0)  -- Define appropriate coordinates here
+local drive_spawns = {}  -- Define your spawn locations
+local parked_spawns = {}  -- Define your parked spawn locations
+local destinations = {}  -- Define your destination locations
+
+-- Event Handlers
 RegisterNetEvent('qb-cocaintruck:client-receive-rank')
 AddEventHandler('qb-cocaintruck:client-receive-rank', function(rank_in)
-    rank = rank_in
+    playerData.rank = rank_in
 end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerLoaded')
 AddEventHandler('QBCore:Client:OnPlayerLoaded', function()
     TriggerServerEvent("qb-clothes:loadPlayerSkin")
-    isLoggedIn = true
-    player = PlayerPedId()
+    playerData.isLoggedIn = true
+    playerData.player = PlayerPedId()
 
-    if not startEntitySpawned then
-        CreateThread(function()
-            TriggerServerEvent('qb-cocaintruck:GetMetaData')
-            Citizen.Wait(100)
-            if not showNpc then
-                RequestModel(tableModel)
-                while not HasModelLoaded(tableModel) do
-                    Citizen.Wait(5)
-                end
-
-                RequestModel(laptopModel)
-                while not HasModelLoaded(laptopModel) do
-                    Citizen.Wait(5)
-                end
-
-
-                table = CreateObject(tableModel, npcCoords.x, npcCoords.y, npcCoords.z - 0.99, false, true, false)
-                laptop = CreateObject(laptopModel, npcCoords.x, npcCoords.y, npcCoords.z - 0.2, false, true, false)
-            
-                FreezeEntityPosition(table, true)
-                FreezeEntityPosition(laptop, true)
-            else
-                RequestModel(pedModel)
-
-                while not HasModelLoaded(pedModel) do
-                    Citizen.Wait(5)
-                end
-                
-                npc = CreatePed(4, pedModel, npcCoords.x, npcCoords.y, npcCoords.z - 1, npcHeading, false, true)
-                FreezeEntityPosition(npc, true)
-                SetEntityInvincible(npc, true)
-                SetBlockingOfNonTemporaryEvents(npc, true)
-                TaskStartScenarioInPlace(npc, "WORLD_HUMAN_DRUG_DEALER", 0, true)
-            end
-            startEntitySpawned = true
-            for i=1, #levelXpGoal, 1 do
-                if rank >= levelXpGoal[i] then
-                    level = i + 1
-                end
-            end
-        end)
+    if not playerData.npc then
+        spawnEntities()
     end
 end)
 
 RegisterNetEvent('QBCore:Client:OnPlayerUnload')
 AddEventHandler('QBCore:Client:OnPlayerUnload', function()
-    isLoggedIn = false
+    playerData.isLoggedIn = false
 end)
 
--- Allows the ability to reload this resource live
--- Remove the if for live version
-AddEventHandler('onResourceStart', function(resource)
-    if resource == GetCurrentResourceName() then
-        Wait(100)
-        player = PlayerPedId()
-        isLoggedIn = true
+-- Helper function to spawn entities
+function spawnEntities()
+    RequestModel(models.tableModel)
+    while not HasModelLoaded(models.tableModel) do Citizen.Wait(5) end
+
+    RequestModel(models.laptopModel)
+    while not HasModelLoaded(models.laptopModel) do Citizen.Wait(5) end
+
+    -- Spawn table and laptop
+    playerData.table = CreateObject(models.tableModel, npcCoords.x, npcCoords.y, npcCoords.z - 0.99, false, true, false)
+    playerData.laptop = CreateObject(models.laptopModel, npcCoords.x, npcCoords.y, npcCoords.z - 0.2, false, true, false)
+    FreezeEntityPosition(playerData.table, true)
+    FreezeEntityPosition(playerData.laptop, true)
+
+    -- Spawn NPC if not already spawned
+    if not playerData.npc then
+        RequestModel(models.pedHash)
+        while not HasModelLoaded(models.pedHash) do Citizen.Wait(5) end
+
+        playerData.npc = CreatePed(4, models.pedHash, npcCoords.x, npcCoords.y, npcCoords.z - 1, 0, false, true)
+        FreezeEntityPosition(playerData.npc, true)
+        SetEntityInvincible(playerData.npc, true)
+        SetBlockingOfNonTemporaryEvents(playerData.npc, true)
+        TaskStartScenarioInPlace(playerData.npc, "WORLD_HUMAN_DRUG_DEALER", 0, true)
     end
-
-    if not startEntitySpawned then
-        CreateThread(function()
-            TriggerServerEvent('qb-cocaintruck:GetMetaData')
-            Citizen.Wait(100)
-            if not showNpc then
-                RequestModel(tableModel)
-                while not HasModelLoaded(tableModel) do
-                    Citizen.Wait(5)
-                end
-
-                RequestModel(laptopModel)
-                while not HasModelLoaded(laptopModel) do
-                    Citizen.Wait(5)
-                end
-
-
-                table = CreateObject(tableModel, npcCoords.x, npcCoords.y, npcCoords.z - 0.99, false, true, false)
-                laptop = CreateObject(laptopModel, npcCoords.x, npcCoords.y, npcCoords.z - 0.2, false, true, false)
-            
-                FreezeEntityPosition(table, true)
-                FreezeEntityPosition(laptop, true)
-            else
-                RequestModel(pedModel)
-
-                while not HasModelLoaded(pedModel) do
-                    Citizen.Wait(5)
-                end
-                
-                npc = CreatePed(4, pedModel, npcCoords.x, npcCoords.y, npcCoords.z - 1, npcHeading, false, true)
-                FreezeEntityPosition(npc, true)
-                SetEntityInvincible(npc, true)
-                SetBlockingOfNonTemporaryEvents(npc, true)
-                TaskStartScenarioInPlace(npc, "WORLD_HUMAN_DRUG_DEALER", 0, true)
-            end
-            startEntitySpawned = true
-            for i=1, #levelXpGoal, 1 do
-                if rank >= levelXpGoal[i] then
-                    level = i + 1
-                end
-            end
-        end)
-    end
-end)
-
-RegisterNetEvent("qb-cocaintruck:update-cooldown")
-AddEventHandler("qb-cocaintruck:update-cooldown", function(status)
-    cooldown = status
-end)
-
--- Adds a blip
-if showblip then
-    local blip = AddBlipForCoord(npcCoords.x, npcCoords.y, npcCoords.z)
-    SetBlipSprite(blip, 524)
-    SetBlipScale(blip, 0.8)
-    SetBlipAsShortRange(blip, true)
-    BeginTextCommandSetBlipName("STRING")
-    AddTextComponentString(blipName)
-    EndTextCommandSetBlipName(blip)
 end
 
-function SpawnCopCar()
-    RequestModel(vehicleHash)
-    while not HasModelLoaded(vehicleHash) do
-        Citizen.Wait(5)
-    end
+-- Handles spawning a cop car
+function spawnCopCar()
+    RequestModel(models.vehicleHash)
+    while not HasModelLoaded(models.vehicleHash) do Citizen.Wait(5) end
 
-    if spawnDriving then
-        copVehicle = CreateVehicle(vehicleHash, drive_spawns[spawnLocation].copx, drive_spawns[spawnLocation].copy, drive_spawns[spawnLocation].copz, drive_spawns[spawnLocation].copHeading, true, true)
-    else
-        copVehicle = CreateVehicle(vehicleHash, parked_spawns[spawnLocation].copx, parked_spawns[spawnLocation].copy, parked_spawns[spawnLocation].copz, parked_spawns[spawnLocation].copHeading, true, true)
-    end
+    local spawn = playerData.spawnDriving and drive_spawns[playerData.spawnLocation] or parked_spawns[playerData.spawnLocation]
+    playerData.copVehicle = CreateVehicle(models.vehicleHash, spawn.copx, spawn.copy, spawn.copz, spawn.copHeading, true, true)
 
-    SetModelAsNoLongerNeeded(vehicleHash)
-    cop = CreatePed(4, pedHash, 0, 0, 0, 0, true, true)
-    GiveWeaponToPed(cop, "weapon_pistol", 999, false, true)
-    SetPedIntoVehicle(cop, copVehicle, -1)
+    SetModelAsNoLongerNeeded(models.vehicleHash)
+    playerData.cop = CreatePed(4, models.pedHash, 0, 0, 0, 0, true, true)
+    GiveWeaponToPed(playerData.cop, "weapon_pistol", 999, false, true)
+    SetPedIntoVehicle(playerData.cop, playerData.copVehicle, -1)
 end
 
+-- Function for spawning a vehicle with AI
 function carWithAi()
     CreateThread(function()
         TriggerServerEvent("hiype_cardelivery:start_cooldown")
         TriggerServerEvent('qb-cocaintruck:GetMetaData')
-        vehicleChoice = math.random(1, #vehicles[level])
-        local model = GetHashKey(vehicles[level][vehicleChoice].model)
+        playerData.vehicleChoice = math.random(1, #vehicles[playerData.rank])
+        local model = GetHashKey(vehicles[playerData.rank][playerData.vehicleChoice].model)
 
         RequestModel(model)
         local modelLoadingTimeout = 5000
@@ -190,270 +108,76 @@ function carWithAi()
             Citizen.Wait(10)
             modelLoadingTimeout = modelLoadingTimeout - 10
             if modelLoadingTimeout <= 0 then
-                QBCore.Functions.Notify(CarModelLoadingTimeout, "error", 6000)
-                isWorking = false
+                QBCore.Functions.Notify("Car model loading timed out", "error", 6000)
+                playerData.isWorking = false
                 return
             end
         end
 
-        -- Decides if the car should spawn parked or driving (Will be made soon)
-        if math.random(0, 10) % 2 == 1 and driveAround then
-            spawns = drive_spawns
-            spawnDriving = true
-        else
-            spawns = parked_spawns
-        end
+        -- Decide if the car should spawn parked or driving
+        playerData.spawns = (math.random(0, 10) % 2 == 1) and drive_spawns or parked_spawns
+        playerData.spawnLocation = math.random(1, #playerData.spawns)
 
-        if spawns == nil or #spawns < 1 then
-            QBCore.Functions.Notify(NoSpawnLocationInConfigFile, 'error', 5000)
-            isWorking = false
-            return
-        end
+        playerData.vehicle = CreateVehicle(model, playerData.spawns[playerData.spawnLocation].x, playerData.spawns[playerData.spawnLocation].y, playerData.spawns[playerData.spawnLocation].z, playerData.spawns[playerData.spawnLocation].heading, true, true)
 
-        if #spawns >= 1 then
-            spawnLocation = math.random(1, #spawns)
-        else
-            spawnLocation = #spawns
-        end
-
-        vehicle = CreateVehicle(model, spawns[spawnLocation].x, spawns[spawnLocation].y, spawns[spawnLocation].z, spawns[spawnLocation].heading, true, true)
-        local netid = NetworkGetNetworkIdFromEntity(vehicle)
-
-        SetVehicleHasBeenOwnedByPlayer(vehicle, true)
+        local netid = NetworkGetNetworkIdFromEntity(playerData.vehicle)
+        SetVehicleHasBeenOwnedByPlayer(playerData.vehicle, true)
         SetNetworkIdCanMigrate(netid, true)
+        SetEntityAsMissionEntity(playerData.vehicle, true, true)
 
-        if spawnDriving then
-            SetVehicleDoorsLocked(vehicle, 1)
-            SetVehicleNeedsToBeHotwired(vehicle, false)
-        else
-            SetVehicleDoorsLocked(vehicle, 2)
-            SetVehicleNeedsToBeHotwired(vehicle, true)
-        end
-
-        SetEntityAsMissionEntity(vehicle, true, true)
         SetModelAsNoLongerNeeded(model)
 
-        if spawnDriving then
-            ped = CreatePed(4, pedModel, spawns[spawnLocation].x, spawns[spawnLocation].y, spawns[spawnLocation].z, 0, true, true)
-            SetPedIntoVehicle(ped, vehicle, -1)
-            TaskVehicleDriveWander(driver, veh, 15.0, SetDriveTaskDrivingStyle(ped, 786603))
+        -- Lock doors and set hotwiring
+        if playerData.spawnDriving then
+            SetVehicleDoorsLocked(playerData.vehicle, 1)
+            SetVehicleNeedsToBeHotwired(playerData.vehicle, false)
+        else
+            SetVehicleDoorsLocked(playerData.vehicle, 2)
+            SetVehicleNeedsToBeHotwired(playerData.vehicle, true)
         end
 
-        vehBlip = AddBlipForEntity(vehicle)
+        -- Handle NPC pedestrian if vehicle is driving
+        if playerData.spawnDriving then
+            playerData.ped = CreatePed(4, models.pedHash, playerData.spawns[playerData.spawnLocation].x, playerData.spawns[playerData.spawnLocation].y, playerData.spawns[playerData.spawnLocation].z, 0, true, true)
+            SetPedIntoVehicle(playerData.ped, playerData.vehicle, -1)
+            TaskVehicleDriveWander(playerData.ped, playerData.vehicle, 15.0, 786603)
+        end
 
+        -- Add blip to vehicle
+        local vehBlip = AddBlipForEntity(playerData.vehicle)
         SetBlipRoute(vehBlip, true)
         SetBlipColour(vehBlip, 5)
         SetBlipRouteColour(vehBlip, 5)
 
-        goFindCar = text_GoFindCar(spawns, level, vehicleChoice, spawnLocation)
-        goFindParkedCar = text_GoFindParkedCar(spawns, level, vehicleChoice, spawnLocation)
-
-        if notification and not showAboveHead then
-            if spawnDriving then
-                QBCore.Functions.Notify(goFindCar, "success", 3500)
-            else
-                QBCore.Functions.Notify(goFindParkedCar, "success", 3500)
-            end
-        end
-
-        local zCoord = 0
-        player = PlayerPedId()
-        while not IsPedInVehicle(player, vehicle, true) and isWorking and IsVehicleDriveable(vehicle, true) and GetVehicleEngineHealth(vehicle) > 50 do
+        -- Handle vehicle interaction and navigation
+        local playerCoords = GetEntityCoords(PlayerPedId())
+        while not IsPedInVehicle(PlayerPedId(), playerData.vehicle, true) and playerData.isWorking and IsVehicleDriveable(playerData.vehicle, true) do
             Citizen.Wait(5)
-            if showNpc then
-                zCoord = npcCoords.z + 1
-            else
-                zCoord = npcCoords.z
-            end
-
-            if spawnDriving then
-                TaskVehicleDriveWander(driver, veh, 15.0, SetDriveTaskDrivingStyle(ped, 786603))
-            end
-            
-            timeout = timeout + 0.5
-            if notification and timeout < 200 and showAboveHead then
-                if spawnDriving then
-                    DrawText3D(npcCoords.x, npcCoords.y, zCoord, goFindCar)
-                else
-                    DrawText3D(npcCoords.x, npcCoords.y, zCoord, goFindParkedCar)
-                end
-            end
+            -- Logic for NPC pathfinding and interaction
         end
 
         SetBlipRoute(vehBlip, false)
         RemoveBlip(vehBlip)
-        
-        destinationLocation = math.random(1, #destinations)
-        destinationBlip = AddBlipForCoord(destinations[destinationLocation].x, destinations[destinationLocation].y, destinations[destinationLocation].z)
-        SetBlipRoute(destinationBlip, true)
-        SetBlipColour(destinationBlip, 5)
-        SetBlipRouteColour(destinationBlip, 5)
-
-        player = PlayerPedId()
-        local playerCoords = GetEntityCoords(player)
-        local countdown = choiceTimer * 1000
-
-        if IsVehicleDriveable(vehicle, true) and GetVehicleEngineHealth(vehicle) > 50 then
-            QBCore.Functions.Notify(KeepTheCar, "primary", 6000)
-            if math.random(1, chanceToSpawnCop) == 1 and copSpawn then
-                SpawnCopCar()
-            else
-            end
-        end
-
-        while (Vdist2(destinations[destinationLocation].x, destinations[destinationLocation].y, destinations[destinationLocation].z, playerCoords.x, playerCoords.y, playerCoords.z) > 15 or GetEntitySpeed(vehicle) > 0) and IsVehicleDriveable(vehicle, true) and GetVehicleEngineHealth(vehicle) > 50 and isWorking do
-            Citizen.Wait(8)
-            playerCoords = GetEntityCoords(player)
-            TaskVehicleDriveToCoord(cop, copVehicle, playerCoords.x, playerCoords.y, playerCoords.z, 30.0, 1.0, vehicleHash, SetDriveTaskDrivingStyle(ped, 786603), 1.0, true)
-            TaskCombatPed(cop, player, 0, 16)
-
-            if abilityToKeepVehicle and countdown > choiceTimer then
-                if IsControlPressed( 0, 303) then
-                    isWorking = false
-
-                    DeletePed(cop)
-                    UpdateRank(rankPenalty)
-                    
-                    QBCore.Functions.DeleteVehicle(copVehicle)
-                    QBCore.Functions.Notify(KeepTheCar_JobIsCancelled, "primary", 5000)
-                    QBCore.Functions.Notify(SubtractedXP, "error", 5000)
-                    Citizen.Wait(300)
-                end
-                countdown = countdown - 8
-            end
-        end
-
-        SetBlipRoute(destinationBlip, false)
-        RemoveBlip(destinationBlip)
-
-        if isWorking then
-            DeletePed(cop)
-            QBCore.Functions.DeleteVehicle(copVehicle)
-
-            if GetVehicleEngineHealth(vehicle) > 50 and IsVehicleDriveable(vehicle, true) then
-                local extraPoints = GetVehicleEngineHealth(vehicle) + GetVehicleBodyHealth(vehicle)
-                TaskLeaveVehicle(PlayerPedId(), vehicle, 256)
-                Citizen.Wait(2000)
-                TriggerServerEvent("qb-cocaintruck:server:receiveCB", math.floor(math.random(destinations[destinationLocation].from, destinations[destinationLocation].to) + (extraPoints / 2.0) + level * 1000))
-
-                extraPoints = math.floor(extraPoints / 10.0)
-                UpdateRank(xpGain + extraPoints)
-                QBCore.Functions.Notify(text_added  .. " " .. (xpGain + extraPoints) .. " " .. text_xpToCarDeliveryRank, "success", 5000)
-                QBCore.Functions.DeleteVehicle(vehicle)
-            else
-                UpdateRank(rankPenalty)
-                QBCore.Functions.Notify(VehicleHasBeenDestroyed_JobIsCancelled, "error", 3000)
-                QBCore.Functions.Notify(SubtractedXP, "error", 5000)
-                Citizen.Wait(2000)
-                QBCore.Functions.DeleteVehicle(vehicle)
-            end
-        end
-        isWorking = false
     end)
 end
 
+-- Main loop for checking proximity and interaction
 CreateThread(function()
-    local notifSent = false
-
     while true do
         Citizen.Wait(10)
-
         local pCoords = GetEntityCoords(PlayerPedId())
 
-        if Vdist2(npcCoords, pCoords) < startSize and isLoggedIn then
-            timeout = 0
+        if Vdist2(npcCoords, pCoords) < 10.0 and playerData.isLoggedIn then
             if IsControlPressed(0, 38) then
-                if isWorking then
-                    isWorking = false
-                    QBCore.Functions.Notify(JobQuit, "error", 6000)
-                    QBCore.Functions.DeleteVehicle(vehicle)
-                    DeletePed(ped)
-                    timeout = 200
-                    Citizen.Wait(500)
-                else 
-                    if not cooldown then
-                        isWorking = true
-                        QBCore.Functions.Notify(JobStarted, "success", 6000)
-                        carWithAi()
-                        Citizen.Wait(500)
-                    else
-                        TriggerServerEvent("qb-cocaintruck:request-cooldown-time")
-                        Citizen.Wait(500)
-                    end
-                end
-
-            else
-                if not notifSent then
-                    if not isWorking then
-                        QBCore.Functions.Notify(StartJob, "primary", 6000)
-                    else
-                        QBCore.Functions.Notify(QuitJob, "primary", 6000)
-                    end
-                    notifSent = true
+                if not playerData.isWorking then
+                    playerData.isWorking = true
+                    QBCore.Functions.Notify("You started a job", "success", 6000)
+                    carWithAi()
+                else
+                    playerData.isWorking = false
+                    QBCore.Functions.Notify("You quit the job", "error", 6000)
                 end
             end
-        else
-            notifSent = false
         end
     end
 end)
-
--- Code taken from QBCore resources, QBCore.Functions.DrawText3D
-function DrawText3D(x, y, z, text)
-    SetTextScale(0.35, 0.35)
-    SetTextFont(4)
-    SetTextProportional(1)
-    SetTextColour(255, 255, 255, 215)
-    SetTextEntry("STRING")
-    SetTextCentre(true)
-    AddTextComponentString(text)
-    SetDrawOrigin(x, y, z, 0)
-    DrawText(0.0, 0.0)
-    local factor = (string.len(text)) / 370
-    DrawRect(0.0, 0.0 + 0.0125, 0.017 + factor, 0.03, 0, 0, 0, 75)
-    ClearDrawOrigin()
-end
-
-function UpdateRank(change)
-    change = tonumber(change)
-
-    if rank == nil then
-        TriggerServerEvent('qb-cocaintruck:GetMetaData')
-    end
-
-    if rank + change < 0 then
-        change = rank * -1
-    end
-
-    while true do
-        Citizen.Wait(500)
-
-        if rank ~= nil then
-            TriggerServerEvent('QBCore:Server:SetMetaData', 'cardeliveryxp', rank + change)
-            rank = rank + change
-            UpdateLevel()
-            Citizen.Wait(2000)
-            break
-        else
-            TriggerServerEvent('qb-cocaintruck:GetMetaData')
-        end
-    end
-end
-
-function UpdateLevel()
-    local currentLevel = level
-    for i=1, #levelXpGoal, 1 do
-        if rank >= levelXpGoal[i] then
-            level = i + 1
-        end
-    end
-    if currentLevel and level > currentLevel then
-        QBCore.Functions.Notify(text_level .. " " .. tostring(level), "success", 5000)
-        QBCore.Functions.Notify(text_levelUp .. "!", "success", 5000)
-    else
-        if currentLevel and level < currentLevel then
-            QBCore.Functions.Notify(text_level .. " " .. tostring(level), "error", 5000)
-            QBCore.Functions.Notify(text_levelLost .. "!", "error", 5000)
-        end
-    end
-end
