@@ -6,7 +6,7 @@
 Before installing **QB-Cocaintruck**, make sure you have the following:
 
 - **QBCore Framework**: This script requires the **QBCore** framework. Ensure QBCore is set up and running on your server. [Get QBCore here](https://github.com/qbcore-framework).
-- **QB-Target**: For improved interaction with NPCs and objects, you will need the **QB-Target** resource. [Install QB-Target here](https://github.com/psmajors/ps-target).
+- **QB-Target**: For improved interaction with NPCs and objects, you will need the **QB-Target** resource. [Install QB-Target here](https://github.com/qbcore-framework/qb-target).
 - **Database**: Set up **MySQL** or **Redis** for saving data (player stats, truck status, job progress). Choose based on your preference.
 - **Client Script**: A client-side script is included for interactivity on the player's side.
 
