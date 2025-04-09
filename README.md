@@ -21,6 +21,7 @@ If any issues occur, don't hesitate to ask for support in our qb-core Discord .
 
 
 💊🎉 Usage 🎉💊
+
 Starting the Script: To start the cocaintruck script, use a command like /cocainetruck or simply type it if you're using a targeting system.
 Interact with Truck and Open Menu: Interact with your character and press E to open up the menu where you can select various options for the cocaine truck job (like Pickup Cocaine).
 Configure Job Limits: Once you finish your shift, if you have earned any amount of cocaine, the script saves it to MySQL or Redis for later retrieval when needed.
