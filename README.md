@@ -98,3 +98,5 @@ The **QB-Cocaintruck** script offers a dynamic and engaging drug delivery job, w
 
 - **AitLilCat**: Lead developer and maintainer of the **QB-Cocaintruck** script.
 - **Contributors**: Thanks to the community for their feedback and suggestions!
+- **Feel free to fork, modify, or contribute to the project! This script is open-source and free for use.** 🍴🤝
+
